@@ -31,7 +31,7 @@ export default function Dashboard() {
   return (
     <div className="flex min-h-screen bg-bg">
       <Sidebar />
-      <main className="ml-[220px] flex-1 p-8 max-w-full overflow-x-hidden">
+      <main className="ml-0 md:ml-[220px] flex-1 p-4 md:p-8 pt-16 md:pt-8 max-w-full overflow-x-hidden">
         {/* Ambient glow */}
         <div className="fixed top-0 right-0 w-[500px] h-[500px] bg-accent/5 rounded-full blur-[120px] pointer-events-none" />
 
@@ -48,7 +48,7 @@ export default function Dashboard() {
         </div>
 
         {/* Stat cards */}
-        <div className="grid grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {[
             { label: "Avg Score", value: avgScore ?? "—", unit: "/10", delay: "stagger-1" },
             { label: "Sessions", value: history.length, delay: "stagger-2" },
@@ -66,7 +66,7 @@ export default function Dashboard() {
 
         {/* Action grid */}
         <p className="text-[11px] font-semibold text-white/25 uppercase tracking-widest mb-4">Quick Actions</p>
-        <div className="grid grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {actions.map((a, i) => (
             <button key={a.path} onClick={() => navigate(a.path)}
               className={`animate-fade-up stagger-${i + 1} text-left p-5 rounded-2xl bg-gradient-to-br ${a.color} border ${a.border} card-hover transition-all duration-200 group`}>

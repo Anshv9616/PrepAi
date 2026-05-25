@@ -20,7 +20,7 @@ export default function Interview() {
   return (
     <div className="flex min-h-screen bg-bg">
       <Sidebar />
-      <main className="ml-[220px] flex-1 p-8 overflow-x-hidden">
+      <main className="ml-0 md:ml-[220px] flex-1 p-4 md:p-8 pt-16 md:pt-8 overflow-x-hidden">
         <div className="fixed top-0 right-0 w-[400px] h-[400px] bg-accent/5 rounded-full blur-[100px] pointer-events-none" />
 
         <div className="mb-8 animate-fade-up">
@@ -28,7 +28,7 @@ export default function Interview() {
           <p className="text-white/40 text-sm mt-1">Pick a topic — we'll generate 10 questions from your resume</p>
         </div>
 
-        <div className="grid grid-cols-[1fr_300px] gap-6 max-w-4xl animate-fade-up stagger-1">
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_300px] gap-6 max-w-4xl animate-fade-up stagger-1">
           {/* Setup card */}
           <div className="glass rounded-2xl p-6 gradient-border">
             <p className="text-[11px] font-semibold text-white/30 uppercase tracking-widest mb-4">Select Topic</p>

@@ -34,7 +34,7 @@ export default function Resume() {
   return (
     <div className="flex min-h-screen bg-bg">
       <Sidebar />
-      <main className="ml-[220px] flex-1 p-8 overflow-x-hidden">
+      <main className="ml-0 md:ml-[220px] flex-1 p-4 md:p-8 pt-16 md:pt-8 overflow-x-hidden">
         <div className="fixed top-0 right-0 w-[400px] h-[400px] bg-violet-500/5 rounded-full blur-[120px] pointer-events-none" />
 
         {/* Header */}
@@ -49,7 +49,7 @@ export default function Resume() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 bg-bg-3/50 border border-border rounded-xl p-1 w-fit mb-7 animate-fade-up stagger-1">
+        <div className="flex flex-wrap gap-1 bg-bg-3/50 border border-border rounded-xl p-1 w-fit mb-7 animate-fade-up stagger-1">
           {TABS.map((t) => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${tab === t ? "bg-bg-5 text-white border border-border-2" : "text-white/35 hover:text-white/60"}`}>
@@ -138,7 +138,7 @@ export default function Resume() {
 
                   <div className="h-px bg-border" />
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <p className="text-xs font-semibold text-green-400 mb-2">✓ Matched Skills</p>
                       <div className="flex flex-wrap gap-1.5">

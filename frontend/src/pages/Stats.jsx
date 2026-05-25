@@ -25,7 +25,7 @@ export default function Stats() {
   return (
     <div className="flex min-h-screen bg-bg">
       <Sidebar />
-      <main className="ml-[220px] flex-1 p-8 overflow-x-hidden">
+      <main className="ml-0 md:ml-[220px] flex-1 p-4 md:p-8 pt-16 md:pt-8 overflow-x-hidden">
         <div className="fixed top-0 left-1/2 w-[500px] h-[300px] bg-emerald-500/4 rounded-full blur-[120px] pointer-events-none" />
 
         <div className="mb-8 animate-fade-up">
@@ -49,7 +49,7 @@ export default function Stats() {
         {!loading && stats.length > 0 && (
           <>
             {/* Summary cards */}
-            <div className="grid grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
               {[
                 { label: "Overall Avg", value: overall, unit: "/10", delay: "stagger-1" },
                 { label: "Topics", value: stats.length, delay: "stagger-2" },
@@ -67,7 +67,7 @@ export default function Stats() {
 
             {/* Topic breakdown */}
             <p className="text-[11px] font-semibold text-white/25 uppercase tracking-widest mb-4">By Topic</p>
-            <div className="grid grid-cols-3 gap-4 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
               {stats.map((s, i) => {
                 const score = Math.round(parseFloat(s.average_score));
                 return (

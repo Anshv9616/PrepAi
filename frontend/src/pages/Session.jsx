@@ -34,7 +34,7 @@ export default function Session() {
 
   if (!questions.length) return (
     <div className="flex min-h-screen bg-bg"><Sidebar />
-      <main className="ml-[220px] flex-1 flex items-center justify-center">
+      <main className="ml-0 md:ml-[220px] flex-1 flex items-center justify-center p-4">
         <div className="text-center">
           <p className="text-white/40 mb-4">Session not found.</p>
           <button onClick={() => navigate("/interview")} className="px-4 py-2.5 rounded-xl bg-accent text-white text-sm font-semibold">New Interview</button>
@@ -46,7 +46,7 @@ export default function Session() {
   return (
     <div className="flex min-h-screen bg-bg">
       <Sidebar />
-      <main className="ml-[220px] flex-1 p-8 overflow-x-hidden">
+      <main className="ml-0 md:ml-[220px] flex-1 p-4 md:p-8 pt-16 md:pt-8 overflow-x-hidden">
         <div className="fixed top-0 right-0 w-[350px] h-[350px] bg-accent/4 rounded-full blur-[100px] pointer-events-none" />
 
         {/* Progress */}
@@ -65,7 +65,7 @@ export default function Session() {
           </div>
         </div>
 
-        <div className="grid grid-cols-[1fr_240px] gap-5 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_240px] gap-5 items-start">
           {/* Main */}
           <div className="flex flex-col gap-4">
             {/* Question */}

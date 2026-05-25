@@ -19,7 +19,7 @@ export default function History() {
   return (
     <div className="flex min-h-screen bg-bg">
       <Sidebar />
-      <main className="ml-[220px] flex-1 p-8 overflow-x-hidden">
+      <main className="ml-0 md:ml-[220px] flex-1 p-4 md:p-8 pt-16 md:pt-8 overflow-x-hidden">
         <div className="fixed top-0 right-0 w-[350px] h-[350px] bg-blue-500/4 rounded-full blur-[100px] pointer-events-none" />
 
         <div className="flex items-start justify-between mb-8 animate-fade-up">
@@ -51,7 +51,8 @@ export default function History() {
         )}
 
         {!loading && history.length > 0 && (
-          <div className="glass rounded-2xl overflow-hidden animate-fade-up stagger-1">
+          <div className="glass rounded-2xl overflow-x-auto animate-fade-up stagger-1">
+            <div className="min-w-[700px]">
             {/* Table header */}
             <div className="grid grid-cols-[1fr_120px_80px_100px_110px_80px] gap-4 px-5 py-3 border-b border-border bg-bg-3/30">
               {["Topic", "Date", "Progress", "Score", "Status", ""].map((h) => (
@@ -78,6 +79,7 @@ export default function History() {
                 <span className="text-white/20 group-hover:text-white/50 transition-colors text-sm">→</span>
               </div>
             ))}
+            </div>
           </div>
         )}
       </main>
