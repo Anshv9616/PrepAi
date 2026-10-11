@@ -33,7 +33,7 @@ def get_ai_feedback(question_text:str,user_answer:str):
     user_content=f"Question:{question_text}\nCandidate Answer:{user_answer}"
 
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="llama-3.1-8b-instant",
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_content}
@@ -63,7 +63,7 @@ RETURN ONLY a JSON object:
 }
 """
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="llama-3.1-8b-instant",
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"Resume:\n{resume_text}\n\nJob Description:\n{job_description}"}
@@ -96,7 +96,7 @@ def generate_cover_letter(resume_text: str, job_description: str):
     }
     """
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="llama-3.1-8b-instant",
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"Resume:\n{resume_text}\n\nJob Description:\n{job_description}"}
@@ -128,7 +128,7 @@ def generate_linkedin_bio(resume_text: str):
     }
     """
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="llama-3.1-8b-instant",
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"Resume:\n{resume_text}"}

@@ -9,7 +9,7 @@ client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 def generate_interview(chunks: list[str],topic:str):
    
     context = "\n\n---\n\n".join([f"[SECTION {i+1}] {c.strip()}" for i, c in enumerate(chunks)])
-    
+    print("context",context)
     
     system_prompt = f"""
 You are a Senior Technical Interviewer. Your goal is to conduct a deep-dive interview focused SPECIFICALLY on the following topic: {topic}.
@@ -38,7 +38,7 @@ Do not add any extra text, markdown, or explanations.
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"Candidate Context:\n{context}"}
             ],
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             temperature=0.7,
             max_tokens=1200,
             response_format={"type": "json_object"}
