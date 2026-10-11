@@ -38,7 +38,7 @@ Do not add any extra text, markdown, or explanations.
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"Candidate Context:\n{context}"}
             ],
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-120b",
             temperature=0.7,
             max_tokens=1200,
             response_format={"type": "json_object"}

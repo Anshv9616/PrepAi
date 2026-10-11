@@ -36,7 +36,7 @@ JSON format:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"Resume Context:\n{context}\n\nUser Question: {query}"}
             ],
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-120b",
             temperature=0.2,
             max_tokens=500,
             response_format={"type": "json_object"}
