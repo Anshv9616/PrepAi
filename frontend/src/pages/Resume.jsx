@@ -119,7 +119,7 @@ export default function Resume() {
                   <div className="flex items-center gap-5">
                     <div className="relative">
                       <svg viewBox="0 0 100 100" width="110" height="110" style={{ filter: `drop-shadow(0 0 12px ${matchResult.match_score >= 70 ? "rgba(74,222,128,0.4)" : matchResult.match_score >= 40 ? "rgba(251,191,36,0.4)" : "rgba(248,113,113,0.4)"})` }}>
-                        <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8"/>
+                        <circle cx="50" cy="50" r="40" fill="none" stroke="var(--ring-track, rgba(255,255,255,0.08))" strokeWidth="8"/>
                         <circle cx="50" cy="50" r="40" fill="none"
                           stroke={matchResult.match_score >= 70 ? "#4ade80" : matchResult.match_score >= 40 ? "#fbbf24" : "#f87171"}
                           strokeWidth="8"
@@ -127,7 +127,7 @@ export default function Resume() {
                           strokeLinecap="round" transform="rotate(-90 50 50)"
                           style={{ transition: "stroke-dasharray 1s ease" }}/>
                         <text x="50" y="50" textAnchor="middle" dominantBaseline="central"
-                          fill="white" fontSize="20" fontWeight="700">{matchResult.match_score}%</text>
+                          fill="rgb(var(--color-white-rgb))" fontSize="20" fontWeight="700">{matchResult.match_score}%</text>
                       </svg>
                     </div>
                     <div>

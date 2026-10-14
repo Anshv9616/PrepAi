@@ -16,22 +16,27 @@ from app.models.interview import InterViewQuestion
 from app.services.rag import generate_answer
 from app.models.interview import InterViewQuestion,InterviewSession
 from app.services.evaluate import get_ai_feedback
+from app.models.user import User
+from app.services.adaptive_agent import run_adaptive_evaluation
+from app.services.cache import get_question_cached, get_ai_feedback_cached
 from groq import Groq
 import asyncio
-from fastapi import BackgroundTasks
 import uuid
-import redis
-from app.services.cache import get_question_cached,get_ai_feedback_cached
-from dotenv import load_dotenv
 import os
+import redis
+from dotenv import load_dotenv
+
 load_dotenv()
 
-redis_client = redis.from_url(
-    os.getenv("REDIS_URL", "redis://localhost:6379"),
-    decode_responses=True
-)
+try:
+    redis_client = redis.from_url(
+        os.getenv("REDIS_URL", "redis://localhost:6379"),
+        decode_responses=True
+    )
+except Exception:
+    redis_client = None
 
-router=APIRouter(prefix="/interview",tags=["interview"])
+router = APIRouter(prefix="/interview", tags=["interview"])
 
 
 
@@ -78,6 +83,9 @@ def generate(topic: str = "general", db: Session = Depends(get_db), current_user
             topic=topic,
             session_id=session_id,
             question_text=q_text,
+            is_follow_up=False,
+            follow_up_depth=0,
+            parent_id=None,
             created_at=datetime.utcnow()
         )
         db.add(new_q)
@@ -100,8 +108,12 @@ async def evaluate_and_save_audio_answer(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    
-    db_question = get_question_cached(question_id, session_id, user.id, db)
+    db_question = db.query(InterViewQuestion).filter(
+        InterViewQuestion.id == question_id,
+        InterViewQuestion.session_id == session_id,
+        InterViewQuestion.user_id == user.id
+    ).first()
+
     if not db_question:
         raise HTTPException(status_code=404, detail="Question not found in this session")
 
@@ -110,7 +122,6 @@ async def evaluate_and_save_audio_answer(
         shutil.copyfileobj(file.file, buffer)
 
     try:
-        
         loop = asyncio.get_event_loop()
         transcription_result = await loop.run_in_executor(
             None,
@@ -120,42 +131,115 @@ async def evaluate_and_save_audio_answer(
                 response_format="text"
             )
         )
-        user_text_answer = transcription_result
+        user_text_answer = str(transcription_result).strip()
 
-        
-        evaluation = get_ai_feedback_cached(db_question.question_text, user_text_answer)
+        # Reconstruct thread history if this is answering a follow-up
+        conversation_history = []
+        if db_question.parent_id:
+            parent_q = db.query(InterViewQuestion).filter(InterViewQuestion.id == db_question.parent_id).first()
+            if parent_q and parent_q.user_answer:
+                conversation_history.append({
+                    "question": parent_q.question_text,
+                    "answer": parent_q.user_answer
+                })
 
-        # invalidate question cache after answer is saved
-        cache_key = f"question:{user.id}:{session_id}:{question_id}"
-        redis_client.delete(cache_key)
+        # Run the Adaptive Agent evaluation and autonomous decision loop
+        agent_outcome = run_adaptive_evaluation(
+            question_text=db_question.question_text,
+            user_answer=user_text_answer,
+            conversation_history=conversation_history,
+            current_depth=db_question.follow_up_depth or 0,
+            max_depth=1
+        )
 
         db_question.user_answer = user_text_answer
-        db_question.ai_feedback = evaluation["feedback"]
-        db_question.score = evaluation["score"]
+        db_question.ai_feedback = agent_outcome.get("feedback")
+        db_question.score = agent_outcome.get("score")
         db_question.created_at = func.now()
+
+        # Invalidate cache if redis is running
+        if redis_client:
+            try:
+                cache_key = f"question:{user.id}:{session_id}:{question_id}"
+                redis_client.delete(cache_key)
+            except Exception:
+                pass
+
+        # Case 1: Agent decides to drill down with a targeted Follow-Up
+        if agent_outcome.get("decision") == "FOLLOW_UP" and agent_outcome.get("follow_up_question"):
+            follow_up_q = InterViewQuestion(
+                user_id=user.id,
+                resume_id=db_question.resume_id,
+                session_id=session_id,
+                topic=db_question.topic,
+                question_text=agent_outcome["follow_up_question"],
+                parent_id=db_question.id,
+                is_follow_up=True,
+                follow_up_depth=(db_question.follow_up_depth or 0) + 1,
+                created_at=datetime.utcnow()
+            )
+            db.add(follow_up_q)
+            db.commit()
+            db.refresh(follow_up_q)
+            db.refresh(db_question)
+
+            return {
+                "message": "Follow-up question generated by Interviewer Agent",
+                "status": "follow_up",
+                "decision": "FOLLOW_UP",
+                "transcription": user_text_answer,
+                "score": db_question.score,
+                "feedback": db_question.ai_feedback,
+                "model_answer": agent_outcome.get("model_answer"),
+                "follow_up": {
+                    "id": follow_up_q.id,
+                    "parent_id": db_question.id,
+                    "question_text": follow_up_q.question_text,
+                    "follow_up_depth": follow_up_q.follow_up_depth
+                }
+            }
+
+        # Case 2: Conversation thread is complete
+        # If this was answering a follow-up, synthesize final score onto parent question
+        if db_question.parent_id:
+            parent_q = db.query(InterViewQuestion).filter(InterViewQuestion.id == db_question.parent_id).first()
+            if parent_q:
+                parent_q.score = db_question.score
+                if agent_outcome.get("feedback"):
+                    parent_q.ai_feedback = f"{parent_q.ai_feedback or ''} \n\n[Follow-up Assessment]: {agent_outcome.get('feedback')}"
+
         db.commit()
         db.refresh(db_question)
 
+        return {
+            "message": "Audio processed and evaluation completed",
+            "status": "complete",
+            "decision": "COMPLETE",
+            "transcription": user_text_answer,
+            "score": db_question.score,
+            "feedback": db_question.ai_feedback,
+            "model_answer": agent_outcome.get("model_answer"),
+            "parent_id": db_question.parent_id
+        }
+
     finally:
         if os.path.exists(temp_path):
-            os.remove(temp_path)
-
-    return {
-        "message": "Audio processed and record updated",
-        "transcription": user_text_answer,
-        "score": db_question.score,
-        "feedback": db_question.ai_feedback
-    }
+            try:
+                os.remove(temp_path)
+            except Exception:
+                pass
 
 @router.get("/stats")
-def get_user_stats(db: Session = Depends(get_db), user=Depends(get_current_user)):
+def get_user_stats(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     stats = db.query(
         InterViewQuestion.topic,
         func.avg(InterViewQuestion.score).label("average_score"),
         func.count(InterViewQuestion.id).label("total_questions")
-    ).filter(InterViewQuestion.user_id == user.id).group_by(InterViewQuestion.topic).all()
+    ).filter(
+        InterViewQuestion.user_id == user.id,
+        (InterViewQuestion.is_follow_up == False) | (InterViewQuestion.is_follow_up == None)
+    ).group_by(InterViewQuestion.topic).all()
 
-    
     return [
         {
             "topic": row.topic,
@@ -171,28 +255,60 @@ def get_session_report(
     db: Session = Depends(get_db), 
     current_user: User = Depends(get_current_user)
 ):
-    results = db.query(InterViewQuestion).filter(
+    all_questions = db.query(InterViewQuestion).filter(
         InterViewQuestion.session_id == session_id,
         InterViewQuestion.user_id == current_user.id
-    ).all()
+    ).order_by(InterViewQuestion.id.asc()).all()
 
-    if not results:
+    if not all_questions:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    
-   
-    topic = results[0].topic if results else "Unknown"
+    topic = all_questions[0].topic if all_questions else "Unknown"
 
-    
-    total_questions = len(results)
-    answered_count = len([q for q in results if q.user_answer is not None])
-    
-    
+    root_questions = [q for q in all_questions if not q.is_follow_up and q.parent_id is None]
+    if not root_questions:
+        root_questions = all_questions
+
+    # Group follow-ups by parent_id
+    follow_up_map = {}
+    for q in all_questions:
+        if q.parent_id:
+            follow_up_map.setdefault(q.parent_id, []).append({
+                "id": q.id,
+                "session_id": q.session_id,
+                "topic": q.topic,
+                "question_text": q.question_text,
+                "user_answer": q.user_answer,
+                "ai_feedback": q.ai_feedback,
+                "score": q.score,
+                "created_at": q.created_at.isoformat() if q.created_at else None,
+                "is_follow_up": True,
+                "follow_up_depth": q.follow_up_depth or 1
+            })
+
+    formatted_details = []
+    for q in root_questions:
+        formatted_details.append({
+            "id": q.id,
+            "session_id": q.session_id,
+            "topic": q.topic,
+            "question_text": q.question_text,
+            "user_answer": q.user_answer,
+            "ai_feedback": q.ai_feedback,
+            "score": q.score,
+            "created_at": q.created_at.isoformat() if q.created_at else None,
+            "is_follow_up": False,
+            "follow_up_depth": 0,
+            "follow_ups": follow_up_map.get(q.id, [])
+        })
+
+    total_questions = len(root_questions)
+    answered_count = len([q for q in root_questions if q.user_answer is not None])
     status = "Completed" if answered_count == total_questions else "In Progress"
 
-    total_score = sum([q.score for q in results if q.score is not None])
-    avg_score = total_score / answered_count if answered_count > 0 else 0
-    
+    scores = [q.score for q in root_questions if q.score is not None]
+    avg_score = sum(scores) / len(scores) if scores else 0
+
     return {
         "session_id": session_id,
         "topic": topic,
@@ -201,14 +317,11 @@ def get_session_report(
         "average_score": round(avg_score, 2),
         "total_questions": total_questions,
         "answered_questions": answered_count,
-        "details": results 
+        "details": formatted_details 
     }
-
 
 @router.get("/history")
 def get_interview_history(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    
-    
     history = db.query(
         InterViewQuestion.session_id,
         InterViewQuestion.topic,
@@ -216,18 +329,19 @@ def get_interview_history(db: Session = Depends(get_db), current_user: User = De
         func.avg(InterViewQuestion.score).label("avg_score"),
         func.count(InterViewQuestion.id).label("total_q"),
         func.count(InterViewQuestion.user_answer).label("answered_q")
-    ).filter(InterViewQuestion.user_id == current_user.id)\
-     .group_by(InterViewQuestion.session_id, InterViewQuestion.topic)\
+    ).filter(
+        InterViewQuestion.user_id == current_user.id,
+        (InterViewQuestion.is_follow_up == False) | (InterViewQuestion.is_follow_up == None)
+    ).group_by(InterViewQuestion.session_id, InterViewQuestion.topic)\
      .order_by(func.max(InterViewQuestion.created_at).desc()).all()
 
-    
     return [
         {
             "session_id": row.session_id,
             "topic": row.topic,
             "date": row.date,
             "avg_score": round(float(row.avg_score), 2) if row.avg_score else 0,
-            "is_completed": row.total_q == row.answered_q, # True if all answered
+            "is_completed": row.total_q == row.answered_q,
             "progress": f"{row.answered_q}/{row.total_q}"
         } for row in history
     ]

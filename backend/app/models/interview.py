@@ -1,5 +1,5 @@
 from app.db.database import Base
-from sqlalchemy import Column,Integer,ForeignKey,Text,DateTime,String,Float
+from sqlalchemy import Column,Integer,ForeignKey,Text,DateTime,String,Float,Boolean
 from sqlalchemy.sql import func
 from uuid import uuid4
 from sqlalchemy.orm import relationship
@@ -11,6 +11,10 @@ class InterViewQuestion(Base):
     user_id    = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True)
     resume_id  = Column(Integer, ForeignKey("resumes.id", ondelete="CASCADE"), index=True)
     session_id = Column(String,  ForeignKey("interview_sessions.id", ondelete="CASCADE"), index=True)
+
+    parent_id       = Column(Integer, ForeignKey("interview_question.id", ondelete="CASCADE"), nullable=True)
+    is_follow_up    = Column(Boolean, default=False)
+    follow_up_depth = Column(Integer, default=0)
 
     question_text = Column(Text,    nullable=False)
     user_answer   = Column(Text,    nullable=True)

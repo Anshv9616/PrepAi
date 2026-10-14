@@ -45,6 +45,9 @@ app.include_router(resume.router)
 app.include_router(interview.router)
 with engine.connect() as connection:
     connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+    connection.execute(text("ALTER TABLE interview_question ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES interview_question(id) ON DELETE CASCADE;"))
+    connection.execute(text("ALTER TABLE interview_question ADD COLUMN IF NOT EXISTS is_follow_up BOOLEAN DEFAULT FALSE;"))
+    connection.execute(text("ALTER TABLE interview_question ADD COLUMN IF NOT EXISTS follow_up_depth INTEGER DEFAULT 0;"))
     connection.commit()
 Base.metadata.create_all(bind=engine)
 

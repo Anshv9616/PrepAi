@@ -34,7 +34,11 @@ export const evaluateAudioThunk = createAsyncThunk(
   async ({ sessionId, questionId, audioBlob }, { rejectWithValue }) => {
     try {
       const result = await interviewService.evaluateAudio(sessionId, questionId, audioBlob);
-      toast.success(`Scored ${result.score}/10`);
+      if (result.status === "follow_up") {
+        toast("Interviewer follow-up incoming!", { icon: "🎯" });
+      } else {
+        toast.success(`Completed topic: ${result.score}/10`);
+      }
       return { questionId, result };
     } catch (err) {
       const msg = err.response?.data?.detail || "Evaluation failed";
@@ -114,9 +118,31 @@ const interviewSlice = createSlice({
       .addCase(fetchSessionThunk.fulfilled, (state, action) => {
         state.loading = false;
         state.sessionId = action.payload.session_id;
-        state.questions = action.payload.details;
+        state.questions = action.payload.details || [];
         state.currentIndex = 0;
         state.answers = {};
+        if (Array.isArray(action.payload.details)) {
+          action.payload.details.forEach((q) => {
+            if (q.user_answer) {
+              const followUp = q.follow_ups && q.follow_ups.length > 0 ? q.follow_ups[0] : null;
+              const hasUnansweredFollowUp = followUp && !followUp.user_answer;
+              state.answers[q.id] = {
+                score: q.score,
+                feedback: q.ai_feedback,
+                transcription: q.user_answer,
+                status: hasUnansweredFollowUp ? "follow_up" : "complete",
+                isFollowUpPending: hasUnansweredFollowUp,
+                activeFollowUp: hasUnansweredFollowUp ? followUp : null,
+                followUpAnswer: followUp && followUp.user_answer ? {
+                  question_text: followUp.question_text,
+                  transcription: followUp.user_answer,
+                  score: followUp.score,
+                  feedback: followUp.ai_feedback
+                } : null
+              };
+            }
+          });
+        }
       })
       .addCase(fetchSessionThunk.rejected, (state, action) => {
         state.loading = false;
@@ -127,7 +153,66 @@ const interviewSlice = createSlice({
       .addCase(evaluateAudioThunk.fulfilled, (state, action) => {
         state.evaluating = false;
         const { questionId, result } = action.payload;
-        state.answers[questionId] = result;
+
+        if (result.status === "follow_up") {
+          // Store follow-up on the parent question in state.answers
+          state.answers[questionId] = {
+            ...result,
+            isFollowUpPending: true,
+            activeFollowUp: result.follow_up
+          };
+          // Also attach follow-up to the corresponding question in state.questions
+          const q = state.questions.find((item) => item.id === questionId);
+          if (q) {
+            if (!q.follow_ups) q.follow_ups = [];
+            q.follow_ups.push(result.follow_up);
+          }
+        } else {
+          // Status is complete
+          if (result.parent_id) {
+            const parentId = result.parent_id;
+            const parentAns = state.answers[parentId] || {};
+            state.answers[parentId] = {
+              ...parentAns,
+              score: result.score,
+              feedback: result.feedback,
+              model_answer: result.model_answer,
+              isFollowUpPending: false,
+              activeFollowUp: null,
+              followUpAnswer: {
+                transcription: result.transcription,
+                score: result.score,
+                feedback: result.feedback
+              }
+            };
+            const q = state.questions.find((item) => item.id === parentId);
+            if (q) {
+              q.score = result.score;
+              q.ai_feedback = result.feedback;
+              if (q.follow_ups && q.follow_ups.length > 0) {
+                const f = q.follow_ups.find((item) => item.id === questionId);
+                if (f) {
+                  f.user_answer = result.transcription;
+                  f.score = result.score;
+                  f.ai_feedback = result.feedback;
+                }
+              }
+            }
+          } else {
+            // Direct complete on root question
+            state.answers[questionId] = {
+              ...result,
+              isFollowUpPending: false,
+              activeFollowUp: null
+            };
+            const q = state.questions.find((item) => item.id === questionId);
+            if (q) {
+              q.score = result.score;
+              q.ai_feedback = result.feedback;
+              q.user_answer = result.transcription;
+            }
+          }
+        }
       })
       .addCase(evaluateAudioThunk.rejected, (state, action) => {
         state.evaluating = false;

@@ -1,6 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{js,jsx}"],
+  darkMode: "class",
   theme: {
     extend: {
       fontFamily: {
@@ -9,21 +10,23 @@ export default {
       },
       colors: {
         bg: {
-          DEFAULT: "#07080f",
-          2: "#0d0e1a",
-          3: "#121420",
-          4: "#181a28",
-          5: "#1e2035",
+          DEFAULT: "rgb(var(--bg-main) / <alpha-value>)",
+          2: "rgb(var(--bg-2) / <alpha-value>)",
+          3: "rgb(var(--bg-3) / <alpha-value>)",
+          4: "rgb(var(--bg-4) / <alpha-value>)",
+          5: "rgb(var(--bg-5) / <alpha-value>)",
         },
+        white: "rgb(var(--color-white-rgb) / <alpha-value>)",
+        "pure-white": "#ffffff",
         accent: {
           DEFAULT: "#7c5cfc",
           light: "#a78bfa",
           glow: "rgba(124,92,252,0.25)",
         },
         border: {
-          DEFAULT: "rgba(255,255,255,0.07)",
-          2: "rgba(255,255,255,0.11)",
-          3: "rgba(255,255,255,0.18)",
+          DEFAULT: "rgb(var(--color-border) / 0.08)",
+          2: "rgb(var(--color-border) / 0.12)",
+          3: "rgb(var(--color-border) / 0.18)",
         },
       },
       animation: {
